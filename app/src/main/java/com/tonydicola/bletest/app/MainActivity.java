@@ -8,19 +8,44 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
+import android.content.Context;
+import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import com.android.volley.*;
+import com.android.volley.toolbox.*;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import javax.net.ssl.HttpsURLConnection;
 
 public class MainActivity extends Activity {
 
@@ -30,6 +55,8 @@ public class MainActivity extends Activity {
     public static UUID RX_UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
     // UUID for the BTLE client characteristic which is necessary for notifications.
     public static UUID CLIENT_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+    public final static String EXTRA_MESSAGE = "MESSAGE";
+
 
     // UI elements
     private TextView messages;
@@ -40,6 +67,9 @@ public class MainActivity extends Activity {
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic tx;
     private BluetoothGattCharacteristic rx;
+
+    private Context context;
+
 
     // Main BTLE device callback where much of the logic occurs.
     private BluetoothGattCallback callback = new BluetoothGattCallback() {
@@ -100,6 +130,8 @@ public class MainActivity extends Activity {
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
             writeLine("Received: " + characteristic.getStringValue(0));
+            makeRequest("http://jsonplaceholder.typicode.com/posts/1");
+
         }
     };
 
@@ -125,6 +157,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        this.context = this;
         setContentView(R.layout.activity_main);
 
         // Grab references to UI elements.
@@ -261,6 +294,30 @@ public class MainActivity extends Activity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void makeRequest(String url) {
+        RequestQueue queue = Volley.newRequestQueue(this.context);
+        JsonObjectRequest request = new JsonObjectRequest(  Request.Method.GET, url, null,
+                new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                JSONObject jObject = null;
+                for(int i = 0; i < response.length(); i++) {
+                    try {
+                        Toast.makeText(MainActivity.this, response.toString(), Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.d("VolleyTest", error.getMessage());
+            }
+        });
+        queue.add(request);
     }
 
 }
